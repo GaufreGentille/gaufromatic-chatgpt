@@ -2,7 +2,11 @@
 import tmi from 'tmi.js';
 import OpenAI from 'openai';
 import { promises as fsPromises } from 'fs';
-
+import fs from 'fs';
+ 
+const file_context = fs.readFileSync('file_context.txt', 'utf-8');
+ 
+const openaiOperations = new OpenAIOperations(file_context, openai_api_key, model_name, history_length);
 export class TwitchBot {
     constructor(bot_username, oauth_token, channels, openai_api_key, enable_tts) {
         this.channels = channels;
