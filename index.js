@@ -6,6 +6,7 @@ import {job} from './keep_alive.js';
 import {OpenAIOperations} from './openai_operations.js';
 import {TwitchBot} from './twitch_bot.js';
 import { formatEmotes } from './emote_formatter.js';
+import { formatEmotes, addRandomEmoteToEnd } from './emote_formatter.js';
 
 
 // Start keep alive cron job
