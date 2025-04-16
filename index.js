@@ -5,6 +5,8 @@ import expressWs from 'express-ws';
 import {job} from './keep_alive.js';
 import {OpenAIOperations} from './openai_operations.js';
 import {TwitchBot} from './twitch_bot.js';
+import { formatEmotes } from './emote_formatter.js';
+
 
 // Start keep alive cron job
 job.start();
