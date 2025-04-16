@@ -7,7 +7,6 @@ export function formatEmotes(text) {
         'OMEGALUL',
         'PogChamp',
         'LUL',
-        'PepeHands',
         'BibleThump',
         '4Head',
         'FeelsStrongMan',
