@@ -90,7 +90,9 @@ bot.onMessage(async (channel, user, message, self) => {
         lastResponseTime = currentTime; // Update the last response time
 
         const response = await openaiOps.make_openai_call(message);
-        bot.say(channel, response);
+        const formattedResponse = formatEmotes(response);
+        bot.say(channel, formattedResponse);
+
     }
 
     const command = commandNames.find(cmd => message.toLowerCase().startsWith(cmd));
@@ -112,10 +114,12 @@ bot.onMessage(async (channel, user, message, self) => {
             messages.forEach((msg, index) => {
                 setTimeout(() => {
                     bot.say(channel, msg);
-                }, 1000 * index);
+                }, 150 * index);
             });
         } else {
-            bot.say(channel, response);
+            const formattedResponse = formatEmotes(response);
+            bot.say(channel, formattedResponse);
+
         }
 
         if (ENABLE_TTS === 'true') {
