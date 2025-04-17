@@ -11,13 +11,11 @@ export function formatEmotes(text) {
         'gaufre1Gunner',
         'gaufre1Pirate',
         'LUL',
-        'PepeHands',
         'BibleThump',
         '4Head',
         'FeelsStrongMan',
         'KEKW',
         'monkaS',
-        'gachiHYPER'
     ];
 
     emoteList.forEach(emote => {
@@ -39,13 +37,11 @@ export function addRandomEmoteToEnd(text) {
         'gaufre1Gunner',
         'gaufre1Pirate',
         'LUL',
-        'PepeHands',
         'BibleThump',
         '4Head',
         'FeelsStrongMan',
         'KEKW',
         'monkaS',
-        'gachiHYPER'
     ];
 
     // Supprimer la ponctuation à la fin
