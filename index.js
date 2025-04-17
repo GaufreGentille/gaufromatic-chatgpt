@@ -91,7 +91,7 @@ bot.onMessage(async (channel, user, message, self) => {
 
         const response = await openaiOps.make_openai_call(message);
         const formattedResponse = formatEmotes(response);
-        let formattedResponse = formatEmotes(response);
+        formattedResponse = formatEmotes(response);
         formattedResponse = addRandomEmoteToEnd(formattedResponse);
         bot.say(channel, formattedResponse);
 
@@ -120,7 +120,7 @@ bot.onMessage(async (channel, user, message, self) => {
             });
         } else {
             const formattedResponse = formatEmotes(response);
-            let formattedResponse = formatEmotes(response);
+            formattedResponse = formatEmotes(response);
             formattedResponse = addRandomEmoteToEnd(formattedResponse);
             bot.say(channel, formattedResponse);
 
