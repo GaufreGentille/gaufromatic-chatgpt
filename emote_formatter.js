@@ -5,7 +5,11 @@ export function formatEmotes(text) {
         'Kappa',
         'OMEGALUL',
         'PogChamp',
-        'gaufreLol',
+        'gaufre1Wut',
+        'gaufre1Justice',
+        'gaufre1Ffee',
+        'gaufre1Gunner',
+        'gaufre1Pirate',
         'LUL',
         'PepeHands',
         'BibleThump',
@@ -29,11 +33,19 @@ export function addRandomEmoteToEnd(text) {
         'Kappa',
         'OMEGALUL',
         'PogChamp',
-        'gaufreLol',
+        'gaufre1Wut',
+        'gaufre1Justice',
+        'gaufre1Ffee',
+        'gaufre1Gunner',
+        'gaufre1Pirate',
         'LUL',
         'PepeHands',
+        'BibleThump',
+        '4Head',
         'FeelsStrongMan',
-        'KEKW'
+        'KEKW',
+        'monkaS',
+        'gachiHYPER'
     ];
 
     // Supprimer la ponctuation à la fin
