@@ -36,21 +36,10 @@ export function addRandomEmoteToEnd(text) {
         'KEKW'
     ];
 
-    // Nettoyer la ponctuation finale
+    // Supprimer la ponctuation à la fin
     text = text.trim().replace(/[.!?]+$/, '');
 
     // Ajouter une emote aléatoire
     const randomEmote = emoteList[Math.floor(Math.random() * emoteList.length)];
     return `${text} ${randomEmote}`;
-}
-
-
-    
-    // Remplacer :emote: par emote
-    emoteList.forEach(emote => {
-        const regex = new RegExp(`:${emote}:`, 'gi');
-        text = text.replace(regex, emote);
-    });
-
-    return text;
 }
