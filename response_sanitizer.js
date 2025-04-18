@@ -3,17 +3,34 @@
 export function sanitizeGPTResponse(text) {
     const allowedEmotes = [
         'Kappa',
+        'bongoTap',
+        'catJAM',
+        'catKISS',
+        'HUH',
+        'Jigglin',
+        'LICKA',
+        'muted',
+        'pedro',
+        'PETTHEMODS',
+        'PogTasty',
+        'POLICE',
+        'RobustoAPT',
+        'ThisIsFine',
+        'VIBE',
+        'Joel', 
         'OMEGALUL',
         'PogChamp',
-        'gaufreLol',
+        'gaufre1Wut',
+        'gaufre1Justice',
+        'gaufre1Ffee',
+        'gaufre1Gunner',
+        'gaufre1Pirate',
         'LUL',
-        'PepeHands',
         'BibleThump',
         '4Head',
         'FeelsStrongMan',
         'KEKW',
         'monkaS',
-        'gachiHYPER'
     ];
 
     // 1. Supprimer les noms genre "winking-face-with-tongue"
