@@ -59,14 +59,13 @@ bot.onConnected((addr, port) => {
 
 bot.onDisconnected(reason => console.log(`Disconnected: ${reason}`));
 
+const RANDOM_FACT_INTERVAL = 5 * 60 * 1000; // 5 minutes
+setInterval(sendRandomUselessFact, RANDOM_FACT_INTERVAL);
 try {
     await bot.connect();
 } catch (err) {
     console.error('Erreur lors de la connexion au bot Twitch :', err);
 }
-
-const RANDOM_FACT_INTERVAL = 5 * 60 * 1000;
-setInterval(sendRandomUselessFact, RANDOM_FACT_INTERVAL);
 
 bot.onMessage(async (channel, user, message, self) => {
     if (self) return;
