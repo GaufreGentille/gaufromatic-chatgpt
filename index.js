@@ -172,7 +172,7 @@ function notifyFileChange() {
 // Fonction d'envoi de faits inutiles
 function sendRandomUselessFact() {
     console.log('[FACT] Récupération d’un fait inutile...');
-    const url = 'https://uselessfacts.jsph.pl/random.json?language=en';
+    const url = 'https://uselessfacts-api.onrender.com/random';
 
     https.get(url, res => {
         let data = '';
@@ -180,7 +180,7 @@ function sendRandomUselessFact() {
         res.on('end', async () => {
             try {
                 const parsed = JSON.parse(data);
-                const fact = parsed.text;
+                const fact = parsed.fact;
                 const prompt = `Traduis ce fait inutile en français, sans ajouter de texte autour : "${fact}"`;
                 const translatedFact = await openaiOps.make_openai_call(prompt);
                 channels.forEach(channel => {
@@ -191,14 +191,4 @@ function sendRandomUselessFact() {
             }
         });
     }).on('error', err => console.error('Erreur HTTPS:', err));
-}
-
-// Connexion du bot et démarrage de l'envoi régulier de faits
-try {
-    await bot.connect();
-    console.log('✅ Bot connecté avec succès. Lancement des faits inutiles...');
-    const RANDOM_FACT_INTERVAL = 5 * 60 * 1000; // 5 minutes
-    setInterval(sendRandomUselessFact, RANDOM_FACT_INTERVAL);
-} catch (err) {
-    console.error('❌ Erreur lors de la connexion au bot Twitch :', err);
 }
