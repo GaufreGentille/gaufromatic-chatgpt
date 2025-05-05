@@ -56,30 +56,6 @@ bot.onDisconnected(reason => {
 
 bot.connect();
 
-// Fonction pour récupérer un fact inutile depuis l'API externe
-async function getRandomFact() {
-    try {
-        const res = await fetch('https://uselessfacts.jsph.pl/random.json?language=en');
-        const data = await res.json();
-        return data.text;
-    } catch (err) {
-        console.error('Erreur en récupérant un fact inutile:', err);
-        // Fact de secours en cas d'erreur
-        return "Saviez-vous que les escargots peuvent dormir pendant trois ans ? 🐌";
-    }
-}
-
-// ⏱️ Envoie un fact inutile toutes les X minutes
-const FACT_INTERVAL_MINUTES = 10; // Modifie cette valeur si tu veux un autre intervalle
-
-setInterval(async () => {
-    const fact = await getRandomFact();
-    const formattedFact = addRandomEmoteToEnd(fact); // Si tu veux ajouter une emote aléatoire
-    channels.forEach(channel => {
-        bot.say(channel, formattedFact);
-    });
-}, FACT_INTERVAL_MINUTES * 60 * 1000);
-
 bot.onMessage(async (channel, user, message, self) => {
     if (self) return;
 
