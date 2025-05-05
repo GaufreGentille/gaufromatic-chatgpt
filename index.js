@@ -177,4 +177,31 @@ function notifyFileChange() {
             client.send(JSON.stringify({ updated: true }));
         }
     });
+    import https from 'https';
+
+function sendRandomUselessFact() {
+    const url = 'https://uselessfacts.jsph.pl/random.json?language=en';
+
+    https.get(url, res => {
+        let data = '';
+
+        res.on('data', chunk => {
+            data += chunk;
+        });
+
+        res.on('end', () => {
+            try {
+                const parsed = JSON.parse(data);
+                const fact = parsed.text;
+
+                channels.forEach(channel => {
+                    bot.say(channel, `🤯 Fait inutile : ${fact}`);
+                });
+            } catch (error) {
+                console.error('Erreur de parsing JSON:', error);
+            }
+        });
+    }).on('error', err => {
+        console.error('Erreur lors de la requête HTTPS:', err);
+    });
 }
