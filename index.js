@@ -2,12 +2,13 @@ import express from 'express';
 import fs from 'fs';
 import ws from 'ws';
 import expressWs from 'express-ws';
-import https from 'https';
+import cors from 'cors';
 import { job } from './keep_alive.js';
 import { OpenAIOperations } from './openai_operations.js';
 import { TwitchBot } from './twitch_bot.js';
 import { sanitizeGPTResponse } from './response_sanitizer.js';
 import { formatEmotes, addRandomEmoteToEnd } from './emote_formatter.js';
+import https from 'https';
 
 // Start keep alive cron job
 job.start();
@@ -16,6 +17,7 @@ const app = express();
 const expressWsInstance = expressWs(app);
 
 app.set('view engine', 'ejs');
+app.use(cors());
 
 // Load environment variables
 const GPT_MODE = process.env.GPT_MODE || 'CHAT';
@@ -23,13 +25,13 @@ const HISTORY_LENGTH = process.env.HISTORY_LENGTH || 5;
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
 const MODEL_NAME = process.env.MODEL_NAME || 'gpt-3.5-turbo';
 const TWITCH_USER = process.env.TWITCH_USER || 'oSetinhasBot';
-const TWITCH_AUTH = process.env.TWITCH_AUTH || 'oauth:xxx'; // masque le token ici
+const TWITCH_AUTH = process.env.TWITCH_AUTH || 'oauth:xxx';
 const COMMAND_NAME = process.env.COMMAND_NAME || '!gpt';
 const CHANNELS = process.env.CHANNELS || 'oSetinhas,jones88';
 const SEND_USERNAME = process.env.SEND_USERNAME || 'true';
 const ENABLE_TTS = process.env.ENABLE_TTS || 'false';
 const ENABLE_CHANNEL_POINTS = process.env.ENABLE_CHANNEL_POINTS || 'false';
-const COOLDOWN_DURATION = parseInt(process.env.COOLDOWN_DURATION, 10) || 10;
+const COOLDOWN_DURATION = Number.isFinite(parseInt(process.env.COOLDOWN_DURATION)) ? parseInt(process.env.COOLDOWN_DURATION, 10) : 10;
 
 if (!OPENAI_API_KEY) {
     console.error('No OPENAI_API_KEY found. Please set it as an environment variable.');
@@ -38,50 +40,51 @@ if (!OPENAI_API_KEY) {
 const commandNames = COMMAND_NAME.split(',').map(cmd => cmd.trim().toLowerCase());
 const channels = CHANNELS.split(',').map(channel => channel.trim());
 const maxLength = 399;
-let fileContext = fs.readFileSync('./file_context.txt', 'utf8');
+let fileContext = '';
 let lastResponseTime = 0;
+
+try {
+    fileContext = fs.readFileSync('./file_context.txt', 'utf8');
+} catch (err) {
+    console.warn('file_context.txt not found, using empty context.');
+}
 
 const bot = new TwitchBot(TWITCH_USER, TWITCH_AUTH, channels, OPENAI_API_KEY, ENABLE_TTS);
 const openaiOps = new OpenAIOperations(fileContext, OPENAI_API_KEY, MODEL_NAME, HISTORY_LENGTH);
 
 bot.onConnected((addr, port) => {
     console.log(`* Connected to ${addr}:${port}`);
-    channels.forEach(channel => {
-        console.log(`* Joining ${channel}`);
-    });
+    channels.forEach(channel => console.log(`* Joining ${channel}`));
 });
 
-bot.onDisconnected(reason => {
-    console.log(`Disconnected: ${reason}`);
-});
+bot.onDisconnected(reason => console.log(`Disconnected: ${reason}`));
 
-bot.connect();
+try {
+    await bot.connect();
+} catch (err) {
+    console.error('Erreur lors de la connexion au bot Twitch :', err);
+}
+
+const RANDOM_FACT_INTERVAL = 5 * 60 * 1000;
+setInterval(sendRandomUselessFact, RANDOM_FACT_INTERVAL);
 
 bot.onMessage(async (channel, user, message, self) => {
-    // 🕒 Envoie un fact inutile toutes les 5 minutes
-    const RANDOM_FACT_INTERVAL = 5 * 60 * 1000; // 5 minutes en ms
-    setInterval(sendRandomUselessFact, RANDOM_FACT_INTERVAL);
-
     if (self) return;
 
     const currentTime = Date.now();
     const elapsedTime = (currentTime - lastResponseTime) / 1000;
 
-    // 🎯 Channel points trigger
-    if (ENABLE_CHANNEL_POINTS === 'true' && user['msg-id'] === 'highlighted-message') {
+    if (ENABLE_CHANNEL_POINTS === 'true' && user['custom-reward-id']) {
         if (elapsedTime < COOLDOWN_DURATION) {
             bot.say(channel, `Cooldown active. Please wait ${COOLDOWN_DURATION - elapsedTime.toFixed(1)} seconds.`);
             return;
         }
         lastResponseTime = currentTime;
-
         const response = await openaiOps.make_openai_call(message);
-        let formattedResponse = formatEmotes(response);
-        formattedResponse = addRandomEmoteToEnd(formattedResponse);
+        let formattedResponse = addRandomEmoteToEnd(formatEmotes(response));
         bot.say(channel, formattedResponse);
     }
 
-    // 🎯 Command trigger (!gpt)
     const command = commandNames.find(cmd => message.toLowerCase().startsWith(cmd));
     if (command) {
         if (elapsedTime < COOLDOWN_DURATION) {
@@ -89,7 +92,6 @@ bot.onMessage(async (channel, user, message, self) => {
             return;
         }
         lastResponseTime = currentTime;
-
         let text = message.slice(command.length).trim();
         if (SEND_USERNAME === 'true') {
             text = `Message from user ${user.username}: ${text}`;
@@ -99,19 +101,16 @@ bot.onMessage(async (channel, user, message, self) => {
         if (response.length > maxLength) {
             const messages = response.match(new RegExp(`.{1,${maxLength}}`, 'g'));
             messages.forEach((msg, index) => {
-                setTimeout(() => {
-                    bot.say(channel, msg);
-                }, 150 * index);
+                setTimeout(() => bot.say(channel, msg), 150 * index);
             });
         } else {
-            let formattedResponse = formatEmotes(response);
-            formattedResponse = addRandomEmoteToEnd(formattedResponse);
+            let formattedResponse = addRandomEmoteToEnd(formatEmotes(response));
             bot.say(channel, formattedResponse);
         }
 
         if (ENABLE_TTS === 'true') {
             try {
-                const ttsAudioUrl = await bot.sayTTS(channel, response, user['userstate']);
+                const ttsAudioUrl = await bot.sayTTS(channel, response, user);
                 notifyFileChange(ttsAudioUrl);
             } catch (error) {
                 console.error('TTS Error:', error);
@@ -120,7 +119,6 @@ bot.onMessage(async (channel, user, message, self) => {
     }
 });
 
-// WebSocket
 app.ws('/check-for-updates', (ws, req) => {
     ws.on('message', message => {});
 });
@@ -136,19 +134,16 @@ app.all('/', (req, res) => {
 
 if (GPT_MODE === 'CHAT') {
     fs.readFile('./file_context.txt', 'utf8', (err, data) => {
-        if (err) throw err;
-        messages[0].content = data;
+        if (!err) messages[0].content = data;
     });
 } else {
     fs.readFile('./file_context.txt', 'utf8', (err, data) => {
-        if (err) throw err;
-        fileContext = data;
+        if (!err) fileContext = data;
     });
 }
 
 app.get('/gpt/:text', async (req, res) => {
     const text = req.params.text;
-
     try {
         let answer = '';
         if (GPT_MODE === 'CHAT') {
@@ -159,7 +154,6 @@ app.get('/gpt/:text', async (req, res) => {
         } else {
             throw new Error('Invalid GPT_MODE. Must be CHAT or PROMPT.');
         }
-
         res.send(answer);
     } catch (error) {
         console.error('Error generating response:', error);
@@ -182,26 +176,20 @@ function notifyFileChange() {
             client.send(JSON.stringify({ updated: true }));
         }
     });
+}
 
 function sendRandomUselessFact() {
     const url = 'https://uselessfacts.jsph.pl/random.json?language=en';
 
     https.get(url, res => {
         let data = '';
-
-        res.on('data', chunk => {
-            data += chunk;
-        });
-
+        res.on('data', chunk => data += chunk);
         res.on('end', async () => {
             try {
                 const parsed = JSON.parse(data);
                 const fact = parsed.text;
-
-                // Utilise GPT pour traduire le fait en français
-                const prompt = `Traduis ce fait inutile en français, sans ajouter de texte autour : "${fact}"`;
+                const prompt = `Traduis ce fait inutile en français, sans ajouter de texte autour : \"${fact}\"`;
                 const translatedFact = await openaiOps.make_openai_call(prompt);
-
                 channels.forEach(channel => {
                     bot.say(channel, `🤯 Fait inutile : ${translatedFact}`);
                 });
@@ -209,7 +197,5 @@ function sendRandomUselessFact() {
                 console.error('Erreur de parsing JSON ou GPT:', error);
             }
         });
-    }).on('error', err => {
-        console.error('Erreur HTTPS:', err);
-    });
+    }).on('error', err => console.error('Erreur HTTPS:', err));
 }
