@@ -2,6 +2,7 @@ import express from 'express';
 import fs from 'fs';
 import ws from 'ws';
 import expressWs from 'express-ws';
+import cors from 'cors';
 import { job } from './keep_alive.js';
 import { OpenAIOperations } from './openai_operations.js';
 import { TwitchBot } from './twitch_bot.js';
