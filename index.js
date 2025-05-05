@@ -40,30 +40,34 @@ if (!OPENAI_API_KEY) {
 const commandNames = COMMAND_NAME.split(',').map(cmd => cmd.trim().toLowerCase());
 const channels = CHANNELS.split(',').map(channel => channel.trim());
 const maxLength = 399;
-
 let fileContext = '';
 let lastResponseTime = 0;
 
-// Read file context
 try {
     fileContext = fs.readFileSync('./file_context.txt', 'utf8');
 } catch (err) {
     console.warn('file_context.txt not found, using empty context.');
 }
 
-// Instantiate bot and OpenAI
 const bot = new TwitchBot(TWITCH_USER, TWITCH_AUTH, channels, OPENAI_API_KEY, ENABLE_TTS);
 const openaiOps = new OpenAIOperations(fileContext, OPENAI_API_KEY, MODEL_NAME, HISTORY_LENGTH);
 
-// Bot events
 bot.onConnected((addr, port) => {
-    console.log(`✅ Bot connecté à ${addr}:${port}`);
-    channels.forEach(channel => console.log(`➡️ Rejoint le canal : ${channel}`));
+    console.log(`* Connected to ${addr}:${port}`);
+    channels.forEach(channel => console.log(`* Joining ${channel}`));
 });
 
-bot.onDisconnected(reason => console.log(`❌ Déconnecté : ${reason}`));
+bot.onDisconnected(reason => console.log(`Disconnected: ${reason}`));
 
-// Traitement des messages
+try {
+    await bot.connect();
+} catch (err) {
+    console.error('Erreur lors de la connexion au bot Twitch :', err);
+}
+
+const RANDOM_FACT_INTERVAL = 5 * 60 * 1000;
+setInterval(sendRandomUselessFact, RANDOM_FACT_INTERVAL);
+
 bot.onMessage(async (channel, user, message, self) => {
     if (self) return;
 
@@ -72,7 +76,7 @@ bot.onMessage(async (channel, user, message, self) => {
 
     if (ENABLE_CHANNEL_POINTS === 'true' && user['custom-reward-id']) {
         if (elapsedTime < COOLDOWN_DURATION) {
-            bot.say(channel, `Cooldown actif. Attends ${COOLDOWN_DURATION - elapsedTime.toFixed(1)}s.`);
+            bot.say(channel, `Cooldown active. Please wait ${COOLDOWN_DURATION - elapsedTime.toFixed(1)} seconds.`);
             return;
         }
         lastResponseTime = currentTime;
@@ -84,24 +88,23 @@ bot.onMessage(async (channel, user, message, self) => {
     const command = commandNames.find(cmd => message.toLowerCase().startsWith(cmd));
     if (command) {
         if (elapsedTime < COOLDOWN_DURATION) {
-            bot.say(channel, `Cooldown actif. Attends ${COOLDOWN_DURATION - elapsedTime.toFixed(1)}s.`);
+            bot.say(channel, `Cooldown active. Please wait ${COOLDOWN_DURATION - elapsedTime.toFixed(1)} seconds.`);
             return;
         }
         lastResponseTime = currentTime;
         let text = message.slice(command.length).trim();
         if (SEND_USERNAME === 'true') {
-            text = `Message de ${user.username} : ${text}`;
+            text = `Message from user ${user.username}: ${text}`;
         }
 
         const response = await openaiOps.make_openai_call(text);
-        const formattedResponse = addRandomEmoteToEnd(formatEmotes(response));
-
         if (response.length > maxLength) {
             const messages = response.match(new RegExp(`.{1,${maxLength}}`, 'g'));
-            messages.forEach((msg, i) => {
-                setTimeout(() => bot.say(channel, msg), 150 * i);
+            messages.forEach((msg, index) => {
+                setTimeout(() => bot.say(channel, msg), 150 * index);
             });
         } else {
+            let formattedResponse = addRandomEmoteToEnd(formatEmotes(response));
             bot.say(channel, formattedResponse);
         }
 
@@ -116,12 +119,18 @@ bot.onMessage(async (channel, user, message, self) => {
     }
 });
 
-// Server HTTP + WebSocket
+app.ws('/check-for-updates', (ws, req) => {
+    ws.on('message', message => {});
+});
+
+const messages = [{ role: 'system', content: fileContext }];
+
 app.use(express.json({ extended: true, limit: '1mb' }));
 app.use('/public', express.static('public'));
-app.all('/', (req, res) => res.render('pages/index'));
-app.ws('/check-for-updates', (ws) => ws.on('message', () => {}));
-const messages = [{ role: 'system', content: fileContext }];
+
+app.all('/', (req, res) => {
+    res.render('pages/index');
+});
 
 if (GPT_MODE === 'CHAT') {
     fs.readFile('./file_context.txt', 'utf8', (err, data) => {
@@ -143,22 +152,22 @@ app.get('/gpt/:text', async (req, res) => {
             const prompt = `${fileContext}\n\nUser: ${text}\nAgent:`;
             answer = await openaiOps.make_openai_call_completion(prompt);
         } else {
-            throw new Error('GPT_MODE invalide.');
+            throw new Error('Invalid GPT_MODE. Must be CHAT or PROMPT.');
         }
         res.send(answer);
     } catch (error) {
-        console.error('Erreur réponse GPT :', error);
-        res.status(500).send('Erreur réponse GPT.');
+        console.error('Error generating response:', error);
+        res.status(500).send('Error generating response.');
     }
 });
 
 const server = app.listen(3000, () => {
-    console.log('🚀 Serveur lancé sur le port 3000');
+    console.log('Server running on port 3000');
 });
 
 const wss = expressWsInstance.getWss();
 wss.on('connection', ws => {
-    ws.on('message', () => {});
+    ws.on('message', message => {});
 });
 
 function notifyFileChange() {
@@ -169,10 +178,8 @@ function notifyFileChange() {
     });
 }
 
-// Fonction d'envoi de faits inutiles
 function sendRandomUselessFact() {
-    console.log('[FACT] Récupération d’un fait inutile...');
-    const url = 'https://uselessfacts-api.onrender.com/random';
+    const url = 'https://uselessfacts.jsph.pl/random.json?language=en';
 
     https.get(url, res => {
         let data = '';
@@ -180,14 +187,14 @@ function sendRandomUselessFact() {
         res.on('end', async () => {
             try {
                 const parsed = JSON.parse(data);
-                const fact = parsed.fact;
-                const prompt = `Traduis ce fait inutile en français, sans ajouter de texte autour : "${fact}"`;
+                const fact = parsed.text;
+                const prompt = `Traduis ce fait inutile en français, sans ajouter de texte autour : \"${fact}\"`;
                 const translatedFact = await openaiOps.make_openai_call(prompt);
                 channels.forEach(channel => {
                     bot.say(channel, `🤯 Fait inutile : ${translatedFact}`);
                 });
             } catch (error) {
-                console.error('Erreur parsing ou GPT :', error);
+                console.error('Erreur de parsing JSON ou GPT:', error);
             }
         });
     }).on('error', err => console.error('Erreur HTTPS:', err));
