@@ -56,6 +56,9 @@ bot.onDisconnected(reason => {
 
 bot.connect();
 
+const RANDOM_FACT_INTERVAL = 5 * 60 * 1000; // toutes les 5 minutes
+setInterval(sendRandomUselessFact, RANDOM_FACT_INTERVAL);
+
 bot.onMessage(async (channel, user, message, self) => {
     if (self) return;
 
@@ -189,19 +192,24 @@ function sendRandomUselessFact() {
             data += chunk;
         });
 
-        res.on('end', () => {
+        res.on('end', async () => {
             try {
                 const parsed = JSON.parse(data);
                 const fact = parsed.text;
 
+                // Utilise GPT pour traduire le fait en français
+                const prompt = `Traduis ce fait inutile en français, sans ajouter de texte autour : "${fact}"`;
+                const translatedFact = await openaiOps.make_openai_call(prompt);
+
                 channels.forEach(channel => {
-                    bot.say(channel, `🤯 Fait inutile : ${fact}`);
+                    bot.say(channel, `🤯 Fait inutile : ${translatedFact}`);
                 });
             } catch (error) {
-                console.error('Erreur de parsing JSON:', error);
+                console.error('Erreur de parsing JSON ou GPT:', error);
             }
         });
     }).on('error', err => {
-        console.error('Erreur lors de la requête HTTPS:', err);
+        console.error('Erreur HTTPS:', err);
     });
 }
+
