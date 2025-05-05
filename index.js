@@ -56,10 +56,11 @@ bot.onDisconnected(reason => {
 
 bot.connect();
 
-const RANDOM_FACT_INTERVAL = 5 * 60 * 1000; // toutes les 5 minutes
-setInterval(sendRandomUselessFact, RANDOM_FACT_INTERVAL);
-
 bot.onMessage(async (channel, user, message, self) => {
+    // 🕒 Envoie un fact inutile toutes les 5 minutes
+    const RANDOM_FACT_INTERVAL = 5 * 60 * 1000; // 5 minutes en ms
+    setInterval(sendRandomUselessFact, RANDOM_FACT_INTERVAL);
+
     if (self) return;
 
     const currentTime = Date.now();
@@ -212,4 +213,3 @@ function sendRandomUselessFact() {
         console.error('Erreur HTTPS:', err);
     });
 }
-
