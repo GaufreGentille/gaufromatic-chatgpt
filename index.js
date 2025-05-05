@@ -2,6 +2,7 @@ import express from 'express';
 import fs from 'fs';
 import ws from 'ws';
 import expressWs from 'express-ws';
+import https from 'https';
 import { job } from './keep_alive.js';
 import { OpenAIOperations } from './openai_operations.js';
 import { TwitchBot } from './twitch_bot.js';
@@ -181,7 +182,6 @@ function notifyFileChange() {
             client.send(JSON.stringify({ updated: true }));
         }
     });
-    import https from 'https';
 
 function sendRandomUselessFact() {
     const url = 'https://uselessfacts.jsph.pl/random.json?language=en';
