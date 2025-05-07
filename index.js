@@ -183,19 +183,32 @@ function sendRandomUselessFact() {
 
     https.get(url, res => {
         let data = '';
+
         res.on('data', chunk => data += chunk);
         res.on('end', async () => {
             try {
+                // Tente de parser la réponse
                 const parsed = JSON.parse(data);
-                const fact = parsed.text;
-                const prompt = `Traduis ce fait inutile en français, sans ajouter de texte autour : \"${fact}\"`;
+
+                // Vérifie que le champ texte est bien présent
+                if (!parsed.text) {
+                    throw new Error("Le champ 'text' est manquant dans la réponse.");
+                }
+
+                // Génère le prompt sans guillemets autour du texte
+                const prompt = `Traduis ce fait inutile en français, sans ajouter de texte autour : ${parsed.text}`;
+
                 const translatedFact = await openaiOps.make_openai_call(prompt);
+
                 channels.forEach(channel => {
                     bot.say(channel, `🤯 Fait inutile : ${translatedFact}`);
                 });
             } catch (error) {
                 console.error('Erreur de parsing JSON ou GPT:', error);
+                console.error('Réponse brute :', data);
             }
         });
-    }).on('error', err => console.error('Erreur HTTPS:', err));
+    }).on('error', err => {
+        console.error('Erreur HTTPS:', err);
+    });
 }
