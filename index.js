@@ -66,7 +66,7 @@ try {
     console.error('Erreur lors de la connexion au bot Twitch :', err);
 }
 
-const trackedUsers = ['pseudo1', 'pseudo2'];
+const trackedUsers = ['GarryAuLait', 'pandibullee'];
 
 bot.onMessage(async (channel, user, message, self) => {
     if (self) return;
@@ -92,7 +92,7 @@ bot.onMessage(async (channel, user, message, self) => {
 
     // ----- Réaction à certains pseudos -----
     if (trackedUsers.includes(user.username.toLowerCase())) {
-        const prompt = `Tu es Gaufromatic, un bot sarcastique de Twitch. Réagis à ce message venant de ${user.Garryaulait} : "${message}". Garde un ton second degré, drôle, un peu absurde, mais bienveillant.`;
+        const prompt = `Tu es Gaufromatic, un bot sarcastique de Twitch. Réagis à ce message venant de ${user.username} : "${message}". Garde un ton second degré, drôle, un peu absurde, mais bienveillant.`;
         const response = await openaiOps.make_openai_call(prompt);
         const formattedResponse = addRandomEmoteToEnd(formatEmotes(response));
         bot.say(channel, formattedResponse);
