@@ -69,7 +69,7 @@ try {
     console.error('Erreur lors de la connexion au bot Twitch :', err);
 }
 
-const RANDOM_FACT_INTERVAL = 5 * 60 * 1000;
+const RANDOM_FACT_INTERVAL = 20 * 60 * 1000;
 setInterval(sendRandomUselessFact, RANDOM_FACT_INTERVAL);
 
 bot.onMessage(async (channel, user, message, self) => {
