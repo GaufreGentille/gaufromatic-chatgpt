@@ -179,7 +179,7 @@ function notifyFileChange() {
 }
 
 function sendRandomUselessFact() {
-    const url = 'https://uselessfacts.jsph.pl/random.json?language=en';
+    const url = 'https://uselessfacts.jsph.pl/api/v2/facts/random?language=en';
 
     https.get(url, res => {
         let data = '';
