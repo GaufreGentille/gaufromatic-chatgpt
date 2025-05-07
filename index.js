@@ -26,7 +26,7 @@ const SEND_USERNAME = process.env.SEND_USERNAME !== 'false';
 const ENABLE_TTS = process.env.ENABLE_TTS === 'true';
 const ENABLE_CHANNEL_POINTS = process.env.ENABLE_CHANNEL_POINTS === 'true';
 const COOLDOWN_DURATION = parseInt(process.env.COOLDOWN_DURATION || '10', 10);
-const RANDOM_FACT_INTERVAL = 5 * 60 * 1000;
+const RANDOM_FACT_INTERVAL = 15 * 60 * 1000;
 const MAX_MESSAGE_LENGTH = 399;
 
 if (!OPENAI_API_KEY) {
