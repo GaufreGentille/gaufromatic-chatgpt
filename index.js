@@ -136,7 +136,7 @@ bot.onMessage(async (channel, user, message, self) => {
 
         const prompt = `Tu es Gaufromatic. Résultat : ${result}. Type: ${creditsChange > 0 ? 'gain' : 'perte'}. Crédits changés : ${creditsChange}`;
         const gptReaction = await openaiOps.make_openai_call(prompt);
-        const finalMessage = `🎰 ${result} → ${formatEmotes(gptReaction)}\n${user.username}, tu as maintenant ${userCredits[user.username]} gaufrettes.`;
+        const finalMessage = ` ${result} → ${formatEmotes(gptReaction)}\n${user.username}, tu as maintenant ${userCredits[user.username]} gaufrettes.`;
         bot.say(channel, addRandomEmoteToEnd(finalMessage));
         return;
     }
