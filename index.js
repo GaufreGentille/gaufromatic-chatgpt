@@ -66,7 +66,7 @@ try {
     console.error('Erreur lors de la connexion au bot Twitch :', err);
 }
 
-const trackedUsers = ['GarryAuLait', 'pandibullee', 'GaufreGentille'];
+const trackedUsers = ['garryaulait', 'pandibullee', 'gaufregentille'];
 
 bot.onMessage(async (channel, user, message, self) => {
     if (self) return;
