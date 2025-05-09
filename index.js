@@ -99,7 +99,7 @@ const slotCooldown = {}; // Cooldown de la commande !slot
 // ----- Commande !slot -----
 if (lowerMessage.startsWith('!slot')) {
     const now = Date.now();
-    const cooldownTime = 60 * 1000; // 1 minute de cooldown entre chaque utilisation
+    const cooldownTime = 15 * 60 * 1000; // 15 minutes de cooldown entre chaque utilisation
 
     // Vérifier le cooldown pour cette commande
     if (slotCooldown[user.username] && now - slotCooldown[user.username] < cooldownTime) {
