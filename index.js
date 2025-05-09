@@ -92,6 +92,112 @@ bot.onMessage(async (channel, user, message, self) => {
         fetchAndSendRandomFact(channel);
         return;
     }
+// Déclaration des crédits des utilisateurs et du cooldown
+const userCredits = {}; // Crédits des utilisateurs
+const slotCooldown = {}; // Cooldown de la commande !slot
+
+// ----- Commande !slot -----
+if (lowerMessage.startsWith('!slot')) {
+    const now = Date.now();
+    const cooldownTime = 60 * 1000; // 1 minute de cooldown entre chaque utilisation
+
+    // Vérifier le cooldown pour cette commande
+    if (slotCooldown[user.username] && now - slotCooldown[user.username] < cooldownTime) {
+        const timeLeft = ((cooldownTime - (now - slotCooldown[user.username])) / 1000).toFixed(1);
+        bot.say(channel, `${user.username}, tu dois attendre encore ${timeLeft} secondes avant de pouvoir jouer à nouveau !`);
+        return;
+    }
+
+    // Mise à jour du cooldown
+    slotCooldown[user.username] = now;
+
+    // Résultat de la machine à sous
+    const symbols = ['🍕', '🍌', '💀', '🧀', '🥒', '🔥', '🤡', '🤑', '💩'];
+    const slot1 = symbols[Math.floor(Math.random() * symbols.length)];
+    const slot2 = symbols[Math.floor(Math.random() * symbols.length)];
+    const slot3 = symbols[Math.floor(Math.random() * symbols.length)];
+
+    const result = `${slot1} | ${slot2} | ${slot3}`;
+    let outcome;
+    let creditsChange = 0;
+
+    // Déterminer le résultat
+    if (slot1 === slot2 && slot2 === slot3) {
+        outcome = 'jackpot';
+        creditsChange = 50; // Gagner des crédits pour un jackpot
+    } else if (slot1 === slot2 || slot2 === slot3 || slot1 === slot3) {
+        outcome = 'partial';
+        creditsChange = 10; // Gagner des crédits pour une petite victoire
+    } else {
+        outcome = 'loss';
+        creditsChange = -10; // Perdre des crédits pour un échec
+    }
+
+    // Mettre à jour les crédits
+    if (!userCredits[user.username]) {
+        userCredits[user.username] = 100; // Crédit initial de 100
+    }
+
+    userCredits[user.username] += creditsChange;
+
+    // Réaction du PNJ Dealer (GPT)
+    const prompt = `Tu es Gaufromatic, un bot sarcastique de Twitch, jouant le rôle d'un dealer de casino. Voici le résultat du joueur : ${result} (résultat : ${outcome}). Réagis de façon sarcastique et amusante, tout en commentant le changement de crédits du joueur (+${creditsChange} crédits ou -${creditsChange} crédits). Garde un ton absurde mais bienveillant.`;
+
+    try {
+        const gptReaction = await openaiOps.make_openai_call(prompt);
+        const finalMessage = `🎰 ${result} → ${formatEmotes(gptReaction)}\n${user.username}, tu as maintenant ${userCredits[user.username]} crédits.`;
+        bot.say(channel, addRandomEmoteToEnd(finalMessage));
+    } catch (error) {
+        console.error('Erreur GPT !slot :', error);
+        bot.say(channel, `🎰 ${result} → Dommage, même le bot a buggé devant tant de nullité. 😵 Tu as toujours ${userCredits[user.username]} crédits.`);
+    }
+
+    return;
+}
+
+// ----- Commande !crédits -----
+if (lowerMessage.startsWith('!crédits')) {
+    if (!userCredits[user.username]) {
+        userCredits[user.username] = 100; // Crédit initial si non défini
+    }
+    bot.say(channel, `${user.username}, tu as actuellement ${userCredits[user.username]} crédits.`);
+    return;
+}
+
+// ----- Commande !classement -----
+if (lowerMessage.startsWith('!classement')) {
+    const sortedUsers = Object.entries(userCredits)
+        .sort(([, a], [, b]) => b - a) // Trie par crédit, du plus grand au plus petit
+        .slice(0, 5); // Limite aux 5 premiers
+
+    let rankingMessage = '🏆 **Classement des joueurs (Top 5)** :\n';
+    sortedUsers.forEach(([username, credits], index) => {
+        rankingMessage += `#${index + 1} ${username} : ${credits} crédits\n`;
+    });
+
+    bot.say(channel, rankingMessage);
+    return;
+}
+
+// ----- Commande pour ajouter des crédits (Seul GaufreGentille peut le faire) -----
+if (lowerMessage.startsWith('!ajoutercredits') && user.username.toLowerCase() === 'gaufregentille') {
+    const targetUser = lowerMessage.split(' ')[1];
+    const amount = parseInt(lowerMessage.split(' ')[2]);
+
+    if (!targetUser || isNaN(amount)) {
+        bot.say(channel, 'Usage: !ajoutercredits <utilisateur> <montant>');
+        return;
+    }
+
+    if (!userCredits[targetUser]) {
+        userCredits[targetUser] = 0; // Crédits à 0 si l'utilisateur n'existe pas
+    }
+
+    userCredits[targetUser] += amount;
+
+    bot.say(channel, `${user.username} a ajouté ${amount} crédits à ${targetUser}. ${targetUser} a maintenant ${userCredits[targetUser]} crédits.`);
+    return;
+}
 
     // ----- Réaction à certains pseudos -----
     if (trackedUsers.includes(user.username.toLowerCase())) {
