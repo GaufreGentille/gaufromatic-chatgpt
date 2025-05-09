@@ -121,7 +121,7 @@ bot.onMessage(async (channel, user, message, self) => {
         }
 
         slotCooldown[user.username] = now;
-        const symbols = ['🍕', '🍌', '💀', '🧀', '🥒', '🔥', '🤡', '🤑', '💩'];
+        const symbols = ['🌭', '🧇', '💀', '☕', '🙀', '🔥', '🐶', '💲', '💩'];
         const [slot1, slot2, slot3] = [0, 1, 2].map(() => symbols[Math.floor(Math.random() * symbols.length)]);
         const result = `${slot1} | ${slot2} | ${slot3}`;
         let creditsChange = 0;
