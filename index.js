@@ -34,6 +34,9 @@ const COOLDOWN_DURATION = Number.isFinite(parseInt(process.env.COOLDOWN_DURATION
 const FACT_COOLDOWN_DURATION = 20 * 60 * 1000;
 let lastFactTime = 0;
 
+const USER_REACTION_COOLDOWN = 120 * 1000; // 2 minutes
+const lastUserReactionTime = {};
+
 if (!OPENAI_API_KEY) {
     console.error('No OPENAI_API_KEY found. Please set it as an environment variable.');
 }
@@ -92,6 +95,12 @@ bot.onMessage(async (channel, user, message, self) => {
 
     // ----- Réaction à certains pseudos -----
     if (trackedUsers.includes(user.username.toLowerCase())) {
+    const now = Date.now();
+    const lastTime = lastUserReactionTime[user.username] || 0;
+
+    if (now - lastTime < USER_REACTION_COOLDOWN) return;
+    lastUserReactionTime[user.username] = now;
+
         const prompt = `Tu es Gaufromatic, un bot sarcastique de Twitch. Réagis à ce message venant de ${user.username} : "${message}". Garde un ton second degré, drôle, un peu absurde, mais bienveillant.`;
         const response = await openaiOps.make_openai_call(prompt);
         const formattedResponse = addRandomEmoteToEnd(formatEmotes(response));
