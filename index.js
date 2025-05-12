@@ -164,3 +164,9 @@ async function main() {
 }
 
 main();
+
+// Démarre le serveur Express
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Serveur express lancé sur le port ${PORT}`);
+});
