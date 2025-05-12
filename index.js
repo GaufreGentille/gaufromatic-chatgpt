@@ -4,16 +4,12 @@ import fs from 'fs';
 import ws from 'ws';
 import expressWs from 'express-ws';
 import cors from 'cors';
-import dotenv from 'dotenv';
 import { job } from './keep_alive.js';
 import { OpenAIOperations } from './openai_operations.js';
 import { TwitchBot } from './twitch_bot.js';
 import { sanitizeGPTResponse } from './response_sanitizer.js';
 import { formatEmotes, addRandomEmoteToEnd } from './emote_formatter.js';
 import https from 'https';
-
-// Charge les variables d'environnement
-dotenv.config();
 
 job.start();
 
@@ -23,18 +19,18 @@ const expressWsInstance = expressWs(app);
 app.set('view engine', 'ejs');
 app.use(cors());
 
-const GPT_MODE = process.env.GPT_MODE || 'CHAT';
-const HISTORY_LENGTH = process.env.HISTORY_LENGTH || 5;
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
-const MODEL_NAME = process.env.MODEL_NAME || 'gpt-3.5-turbo';
-const TWITCH_USER = process.env.TWITCH_USER || 'Gaufromatic';
-const TWITCH_AUTH = process.env.TWITCH_AUTH || 'oauth:xxx';
-const COMMAND_NAME = process.env.COMMAND_NAME || '!gpt';
+const GPT_MODE = 'CHAT';
+const HISTORY_LENGTH = 5;
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+const MODEL_NAME = 'gpt-3.5-turbo';
+const TWITCH_USER = process.env.TWITCH_USER;
+const TWITCH_AUTH = process.env.TWITCH_AUTH;
+const COMMAND_NAME = '!gpt';
 const CHANNELS = process.env.CHANNELS || 'gaufregentille';
 const SEND_USERNAME = process.env.SEND_USERNAME || 'true';
 const ENABLE_TTS = process.env.ENABLE_TTS || 'false';
 const ENABLE_CHANNEL_POINTS = process.env.ENABLE_CHANNEL_POINTS || 'false';
-const COOLDOWN_DURATION = Number.isFinite(parseInt(process.env.COOLDOWN_DURATION)) ? parseInt(process.env.COOLDOWN_DURATION, 10) : 10;
+const COOLDOWN_DURATION = 10;
 
 const FACT_COOLDOWN_DURATION = 20 * 60 * 1000;
 let lastFactTime = 0;
@@ -78,26 +74,6 @@ bot.onConnected((addr, port) => {
 
 bot.onDisconnected(reason => console.log(`Disconnected: ${reason}`));
 
-async function isStreamLive() {
-  const userLogin = 'gaufregentille';
-  const clientId = process.env.TWITCH_CLIENT_ID;
-  const accessToken = process.env.TWITCH_APP_TOKEN;
-
-  try {
-    const res = await fetch(`https://api.twitch.tv/helix/streams?user_login=${userLogin}`, {
-      headers: {
-        'Client-ID': clientId,
-        'Authorization': `Bearer ${accessToken}`,
-      },
-    });
-    const data = await res.json();
-    return data.data && data.data.length > 0;
-  } catch (err) {
-    console.error('Erreur lors de la vérification du stream :', err);
-    return false;
-  }
-}
-
 function fetchAndSendRandomFact(channel) {
   const now = Date.now();
   if (now - lastFactTime < FACT_COOLDOWN_DURATION) return;
@@ -127,17 +103,8 @@ async function main() {
     console.error('Erreur lors de la connexion au bot Twitch :', err);
   }
 
-  setInterval(async () => {
-    try {
-      const live = await isStreamLive();
-      const now = Date.now();
-      if (live && now - lastFactTime >= FACT_COOLDOWN_DURATION) {
-        lastFactTime = now;
-        fetchAndSendRandomFact(channels[0]);
-      }
-    } catch (err) {
-      console.error('Erreur dans le timer de fact auto :', err);
-    }
+  setInterval(() => {
+    fetchAndSendRandomFact(channels[0]);
   }, 60 * 1000);
 
   bot.onMessage(async (channel, user, message, self) => {
@@ -177,8 +144,7 @@ async function main() {
 
       const prompt = `Tu es Gaufromatic. Résultat : ${result}. Type: ${delta > 0 ? 'gain' : 'perte'}. Crédits changés : ${delta}`;
       const gptReaction = await openaiOps.make_openai_call(prompt);
-      const msg = `🎰 ${result} → ${formatEmotes(gptReaction)}
-${user.username}, tu as maintenant ${userCredits[user.username]} gaufrettes.`;
+      const msg = `🎰 ${result} → ${formatEmotes(gptReaction)}\n${user.username}, tu as maintenant ${userCredits[user.username]} gaufrettes.`;
       bot.say(channel, addRandomEmoteToEnd(msg));
       return;
     }
