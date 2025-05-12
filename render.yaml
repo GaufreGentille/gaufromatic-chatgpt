@@ -8,9 +8,17 @@ services:
     startCommand: npm start
     envVars:
       - key: OPENAI_API_KEY
-        value: <your-openai-api-key>
+        value: ton-clé-openai-ici
+      - key: TWITCH_USER
+        value: gaufromatic
+      - key: TWITCH_AUTH
+        value: oauth:xxxxxxxxxxxxxxxxxxxxxxxxxx
+      - key: TWITCH_CLIENT_ID
+        value: ta-client-id-obtenue
+      - key: TWITCH_APP_TOKEN
+        value: ton-app-access-token
       - key: CHANNELS
-        value: <your-twitch-channel>
+        value: gaufregentille
       - key: GPT_MODE
         value: "CHAT"
       - key: HISTORY_LENGTH
@@ -18,11 +26,7 @@ services:
       - key: MODEL_NAME
         value: "gpt-3.5-turbo"
       - key: COMMAND_NAME
-        value: "chat"
-      - key: TWITCH_USER  # https://dev.twitch.tv/console
-        value: "oSetinhasBot"
-      - key: TWITCH_AUTH  # https://twitchapps.com/tmi/
-        value: "oauth:9wh6ujbu2mro28zhbl8z6z921iuyxz"
+        value: "!gpt"
       - key: SEND_USERNAME
         value: "true"
       - key: ENABLE_TTS
@@ -31,8 +35,3 @@ services:
         value: "false"
       - key: COOLDOWN_DURATION
         value: "10"
-      - key: TWITCH_CLIENT_ID
-        value: <ton-client-id-twitch>
-      - key: TWITCH_APP_TOKEN
-        value: <ton-app-access-token>
-
