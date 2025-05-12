@@ -1,4 +1,3 @@
-// index.js
 import express from 'express';
 import fs from 'fs';
 import ws from 'ws';
@@ -69,6 +68,41 @@ try {
 } catch (err) {
     console.error('Erreur lors de la connexion au bot Twitch :', err);
 }
+
+// Fonction pour savoir si le stream est en ligne
+async function isStreamLive() {
+    const userLogin = 'gaufregentille';
+    const clientId = process.env.TWITCH_CLIENT_ID;
+    const accessToken = process.env.TWITCH_APP_TOKEN;
+
+    try {
+        const res = await fetch(`https://api.twitch.tv/helix/streams?user_login=${userLogin}`, {
+            headers: {
+                'Client-ID': clientId,
+                'Authorization': `Bearer ${accessToken}`,
+            },
+        });
+        const data = await res.json();
+        return data.data && data.data.length > 0;
+    } catch (err) {
+        console.error('Erreur lors de la vérification du stream :', err);
+        return false;
+    }
+}
+
+// Timer automatique pour fetch un fact toutes les 20 minutes si live
+setInterval(async () => {
+    try {
+        const live = await isStreamLive();
+        const now = Date.now();
+        if (live && now - lastFactTime >= FACT_COOLDOWN_DURATION) {
+            lastFactTime = now;
+            fetchAndSendRandomFact(channels[0]);
+        }
+    } catch (err) {
+        console.error('Erreur dans le timer de fact auto :', err);
+    }
+}, 60 * 1000);
 
 const trackedUsers = ['garryaulait', 'pandibullee', 'gaufregentille'];
 const CREDITS_FILE = './user_credits.json';
