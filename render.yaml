@@ -31,3 +31,8 @@ services:
         value: "false"
       - key: COOLDOWN_DURATION
         value: "10"
+      - key: TWITCH_CLIENT_ID
+        value: <ton-client-id-twitch>
+      - key: TWITCH_APP_TOKEN
+        value: <ton-app-access-token>
+
