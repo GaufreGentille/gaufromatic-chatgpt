@@ -1,4 +1,3 @@
-// index.js
 import express from 'express';
 import fs from 'fs';
 import ws from 'ws';
@@ -10,6 +9,7 @@ import { TwitchBot } from './twitch_bot.js';
 import { sanitizeGPTResponse } from './response_sanitizer.js';
 import { formatEmotes, addRandomEmoteToEnd } from './emote_formatter.js';
 import https from 'https';
+import fetch from 'node-fetch';
 
 job.start();
 
@@ -31,14 +31,18 @@ const SEND_USERNAME = process.env.SEND_USERNAME || 'true';
 const ENABLE_TTS = process.env.ENABLE_TTS || 'false';
 const ENABLE_CHANNEL_POINTS = process.env.ENABLE_CHANNEL_POINTS || 'false';
 const COOLDOWN_DURATION = 10;
+const TWITCH_CLIENT_ID = process.env.TWITCH_CLIENT_ID;
+const TWITCH_CLIENT_SECRET = process.env.TWITCH_CLIENT_SECRET;
 
 const FACT_COOLDOWN_DURATION = 20 * 60 * 1000;
 let lastFactTime = 0;
 const USER_REACTION_COOLDOWN = 120 * 1000;
 const lastUserReactionTime = {};
 const slotCooldown = {};
+const trackedUsers = ['garryaulait', 'pandibullee', 'gaufregentille'];
 const CREDITS_FILE = './user_credits.json';
 let userCredits = {};
+let accessToken = '';
 
 try {
   if (fs.existsSync(CREDITS_FILE)) {
@@ -50,6 +54,50 @@ try {
 
 function saveCredits() {
   fs.writeFileSync(CREDITS_FILE, JSON.stringify(userCredits, null, 2));
+}
+
+async function fetchTwitchAccessToken() {
+  const res = await fetch(`https://id.twitch.tv/oauth2/token?client_id=${TWITCH_CLIENT_ID}&client_secret=${TWITCH_CLIENT_SECRET}&grant_type=client_credentials`, {
+    method: 'POST'
+  });
+  const data = await res.json();
+  accessToken = data.access_token;
+}
+
+async function isStreamLive(username) {
+  if (!accessToken) await fetchTwitchAccessToken();
+  const res = await fetch(`https://api.twitch.tv/helix/streams?user_login=${username}`, {
+    headers: {
+      'Client-ID': TWITCH_CLIENT_ID,
+      'Authorization': `Bearer ${accessToken}`
+    }
+  });
+  const data = await res.json();
+  return data.data && data.data.length > 0;
+}
+
+async function fetchAndSendRandomFact(channel) {
+  const now = Date.now();
+  if (now - lastFactTime < FACT_COOLDOWN_DURATION) return;
+  lastFactTime = now;
+
+  if (!(await isStreamLive('gaufregentille'))) return;
+
+  const url = 'https://uselessfacts.jsph.pl/api/v2/facts/random?language=en';
+  https.get(url, res => {
+    let data = '';
+    res.on('data', chunk => data += chunk);
+    res.on('end', async () => {
+      try {
+        const parsed = JSON.parse(data);
+        const prompt = `Traduis ce fait inutile en français sans rien ajouter : "${parsed.text}"`;
+        const translated = await openaiOps.make_openai_call(prompt);
+        bot.say(channel, `🤯 Fait inutile : ${translated}`);
+      } catch (err) {
+        console.error('Erreur fetch fact :', err);
+      }
+    });
+  });
 }
 
 const commandNames = COMMAND_NAME.split(',').map(cmd => cmd.trim().toLowerCase());
@@ -74,27 +122,34 @@ bot.onConnected((addr, port) => {
 
 bot.onDisconnected(reason => console.log(`Disconnected: ${reason}`));
 
-function fetchAndSendRandomFact(channel) {
-  const now = Date.now();
-  if (now - lastFactTime < FACT_COOLDOWN_DURATION) return;
-  lastFactTime = now;
+bot.onMessage(async (channel, user, message, self) => {
+  if (self) return;
+  const currentTime = Date.now();
+  const elapsedTime = (currentTime - lastResponseTime) / 1000;
+  const lowerMessage = message.toLowerCase();
 
-  const url = 'https://uselessfacts.jsph.pl/api/v2/facts/random?language=en';
-  https.get(url, res => {
-    let data = '';
-    res.on('data', chunk => data += chunk);
-    res.on('end', async () => {
-      try {
-        const parsed = JSON.parse(data);
-        const prompt = `Traduis ce fait inutile en français sans rien ajouter : "${parsed.text}"`;
-        const translated = await openaiOps.make_openai_call(prompt);
-        bot.say(channel, `🤯 Fait inutile : ${translated}`);
-      } catch (err) {
-        console.error('Erreur fetch fact :', err);
-      }
-    });
-  });
-}
+  if (lowerMessage.startsWith('!fact')) {
+    fetchAndSendRandomFact(channel);
+    return;
+  }
+
+  if (["gaufromatic", "le bot", "lebot", "gaufrobot", "gaugromatic"].some(trigger => lowerMessage.startsWith(trigger))) {
+    const prompt = `Tu es Gaufromatic. Réagis à : "${message}"`;
+    const response = await openaiOps.make_openai_call(prompt);
+    bot.say(channel, addRandomEmoteToEnd(formatEmotes(response)));
+    return;
+  }
+
+  if (trackedUsers.includes(user.username.toLowerCase())) {
+    if (currentTime - (lastUserReactionTime[user.username] || 0) < USER_REACTION_COOLDOWN) return;
+    lastUserReactionTime[user.username] = currentTime;
+
+    const prompt = `Tu es Gaufromatic. Réagis au message de ${user.username} : "${message}"`;
+    const response = await openaiOps.make_openai_call(prompt);
+    bot.say(channel, addRandomEmoteToEnd(formatEmotes(response)));
+    return;
+  }
+});
 
 async function main() {
   try {
@@ -106,104 +161,6 @@ async function main() {
   setInterval(() => {
     fetchAndSendRandomFact(channels[0]);
   }, 60 * 1000);
-
-  bot.onMessage(async (channel, user, message, self) => {
-    if (self) return;
-
-    const currentTime = Date.now();
-    const elapsedTime = (currentTime - lastResponseTime) / 1000;
-    const lowerMessage = message.toLowerCase();
-
-    if (lowerMessage.startsWith('!conseil')) {
-      const prompt = `Donne un conseil inutile, absurde mais bienveillant, comme si tu étais Gaufromatic.`;
-      const response = await openaiOps.make_openai_call(prompt);
-      bot.say(channel, addRandomEmoteToEnd(formatEmotes(response)));
-      return;
-    }
-
-    if (lowerMessage.startsWith('!slot')) {
-      const cooldown = 15 * 60 * 1000;
-      if (slotCooldown[user.username] && currentTime - slotCooldown[user.username] < cooldown) {
-        const left = ((cooldown - (currentTime - slotCooldown[user.username])) / 1000).toFixed(1);
-        bot.say(channel, `${user.username}, attends encore ${left}s avant de rejouer.`);
-        return;
-      }
-      slotCooldown[user.username] = currentTime;
-
-      const symbols = ['🌭', '🧇', '💀', '☕', '🙀', '🔥', '🐶', '💲', '💩'];
-      const [s1, s2, s3] = [0, 1, 2].map(() => symbols[Math.floor(Math.random() * symbols.length)]);
-      const result = `${s1} | ${s2} | ${s3}`;
-      let delta = 0;
-      if (s1 === s2 && s2 === s3) delta = 50;
-      else if (s1 === s2 || s2 === s3 || s1 === s3) delta = 10;
-      else delta = -10;
-
-      if (!userCredits[user.username]) userCredits[user.username] = 100;
-      userCredits[user.username] += delta;
-      saveCredits();
-
-      const prompt = `Tu es Gaufromatic. Résultat : ${result}. Type: ${delta > 0 ? 'gain' : 'perte'}. Crédits changés : ${delta}`;
-      const gptReaction = await openaiOps.make_openai_call(prompt);
-      const msg = `🎰 ${result} → ${formatEmotes(gptReaction)}\n${user.username}, tu as maintenant ${userCredits[user.username]} gaufrettes.`;
-      bot.say(channel, addRandomEmoteToEnd(msg));
-      return;
-    }
-
-    if (lowerMessage.startsWith('!gaufrettes') || lowerMessage.startsWith('!crédits')) {
-      if (!userCredits[user.username]) userCredits[user.username] = 100;
-      bot.say(channel, `${user.username}, tu as ${userCredits[user.username]} gaufrettes.`);
-      return;
-    }
-
-    if (lowerMessage.startsWith('!classement')) {
-      const top = Object.entries(userCredits).sort(([, a], [, b]) => b - a).slice(0, 5);
-      let msg = '🏆 Top Gaufrettes :\n';
-      top.forEach(([u, c], i) => { msg += `#${i + 1} ${u} : ${c} gaufrettes\n`; });
-      bot.say(channel, msg);
-      return;
-    }
-
-    if (lowerMessage.startsWith('!ajoutercredits') && user.username.toLowerCase() === 'gaufregentille') {
-      const [, target, amountStr] = lowerMessage.split(' ');
-      const amount = parseInt(amountStr);
-      if (!target || isNaN(amount)) {
-        bot.say(channel, 'Usage: !ajoutercredits <utilisateur> <montant>');
-        return;
-      }
-      if (!userCredits[target]) userCredits[target] = 0;
-      userCredits[target] += amount;
-      saveCredits();
-      bot.say(channel, `${target} a reçu ${amount} gaufrettes.`);
-      return;
-    }
-
-    if (["gaufromatic", "le bot", "lebot", "gaufrobot", "gaugromatic"].some(trigger => lowerMessage.startsWith(trigger))) {
-      const prompt = `Tu es Gaufromatic. Réagis à : "${message}"`;
-      const response = await openaiOps.make_openai_call(prompt);
-      bot.say(channel, addRandomEmoteToEnd(formatEmotes(response)));
-      return;
-    }
-
-    const command = commandNames.find(cmd => lowerMessage.startsWith(cmd));
-    if (command) {
-      if (elapsedTime < COOLDOWN_DURATION) {
-        bot.say(channel, `Cooldown actif. Attends encore ${COOLDOWN_DURATION - elapsedTime.toFixed(1)}s.`);
-        return;
-      }
-      lastResponseTime = currentTime;
-
-      let text = message.slice(command.length).trim();
-      if (SEND_USERNAME === 'true') text = `Message de ${user.username} : ${text}`;
-
-      const response = await openaiOps.make_openai_call(text);
-      if (response.length > maxLength) {
-        const chunks = response.match(new RegExp(`.{1,${maxLength}}`, 'g'));
-        chunks.forEach((chunk, i) => setTimeout(() => bot.say(channel, chunk), 150 * i));
-      } else {
-        bot.say(channel, addRandomEmoteToEnd(formatEmotes(response)));
-      }
-    }
-  });
 }
 
 main();
