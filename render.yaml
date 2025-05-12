@@ -2,36 +2,28 @@ services:
   - type: web
     name: twitch-chatgpt-bot
     runtime: node
-    branch: main
     plan: free
+    branch: main
     buildCommand: npm install
     startCommand: npm start
     envVars:
       - key: OPENAI_API_KEY
-        value: ton-clé-openai-ici
+        value: ton_cle_api_openai
       - key: TWITCH_USER
-        value: gaufromatic
+        value: Gaufromatic
       - key: TWITCH_AUTH
-        value: oauth:xxxxxxxxxxxxxxxxxxxxxxxxxx
+        value: oauth:xxx_ton_token_depuis_twitchtokengenerator
       - key: TWITCH_CLIENT_ID
-        value: ta-client-id-obtenue
-      - key: TWITCH_APP_TOKEN
-        value: ton-app-access-token
+        value: ton_client_id_depuis_dev.twitch.tv
+      - key: TWITCH_CLIENT_SECRET
+        value: ton_client_secret_depuis_dev.twitch.tv
       - key: CHANNELS
         value: gaufregentille
-      - key: GPT_MODE
-        value: "CHAT"
-      - key: HISTORY_LENGTH
-        value: "3"
-      - key: MODEL_NAME
-        value: "gpt-3.5-turbo"
-      - key: COMMAND_NAME
-        value: "!gpt"
       - key: SEND_USERNAME
         value: "true"
       - key: ENABLE_TTS
         value: "false"
       - key: ENABLE_CHANNEL_POINTS
         value: "false"
-      - key: COOLDOWN_DURATION
-        value: "10"
+      - key: PORT
+        value: "3000"
