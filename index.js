@@ -133,6 +133,67 @@ bot.onMessage(async (channel, user, message, self) => {
     return;
   }
 
+  if (lowerMessage.startsWith('!conseil')) {
+    const gptPrompt = `Donne un conseil inutile, absurde mais bienveillant, comme si tu étais Gaufromatic.`;
+    const response = await openaiOps.make_openai_call(gptPrompt);
+    bot.say(channel, addRandomEmoteToEnd(formatEmotes(response)));
+    return;
+  }
+
+  if (lowerMessage.startsWith('!slot')) {
+    const now = Date.now();
+    const cooldownTime = 15 * 60 * 1000;
+    if (slotCooldown[user.username] && now - slotCooldown[user.username] < cooldownTime) {
+      const timeLeft = ((cooldownTime - (now - slotCooldown[user.username])) / 1000).toFixed(1);
+      bot.say(channel, `${user.username}, attends encore ${timeLeft} secondes avant de rejouer.`);
+      return;
+    }
+    slotCooldown[user.username] = now;
+    const symbols = ['🌭', '🧇', '💀', '☕', '🙀', '🔥', '🐶', '💲', '💩'];
+    const [slot1, slot2, slot3] = [0, 1, 2].map(() => symbols[Math.floor(Math.random() * symbols.length)]);
+    const result = `${slot1} | ${slot2} | ${slot3}`;
+    let creditsChange = 0;
+    if (slot1 === slot2 && slot2 === slot3) creditsChange = 50;
+    else if (slot1 === slot2 || slot2 === slot3 || slot1 === slot3) creditsChange = 10;
+    else creditsChange = -10;
+    if (!userCredits[user.username]) userCredits[user.username] = 100;
+    userCredits[user.username] += creditsChange;
+    saveCredits();
+    const prompt = `Tu es Gaufromatic. Résultat : ${result}. Type: ${creditsChange > 0 ? 'gain' : 'perte'}. Crédits changés : ${creditsChange}`;
+    const gptReaction = await openaiOps.make_openai_call(prompt);
+    const finalMessage = `🎰 ${result} → ${formatEmotes(gptReaction)}\n${user.username}, tu as maintenant ${userCredits[user.username]} gaufrettes.`;
+    bot.say(channel, addRandomEmoteToEnd(finalMessage));
+    return;
+  }
+
+  if (lowerMessage.startsWith('!gaufrettes') || lowerMessage.startsWith('!crédits')) {
+    if (!userCredits[user.username]) userCredits[user.username] = 100;
+    bot.say(channel, `${user.username}, tu as ${userCredits[user.username]} gaufrettes.`);
+    return;
+  }
+
+  if (lowerMessage.startsWith('!classement')) {
+    const sorted = Object.entries(userCredits).sort(([, a], [, b]) => b - a).slice(0, 5);
+    let msg = '🏆 Top Gaufrettes :\n';
+    sorted.forEach(([u, c], i) => { msg += `#${i + 1} ${u} : ${c} gaufrettes\n`; });
+    bot.say(channel, msg);
+    return;
+  }
+
+  if (lowerMessage.startsWith('!ajoutercredits') && user.username.toLowerCase() === 'gaufregentille') {
+    const [, targetUser, amountStr] = lowerMessage.split(' ');
+    const amount = parseInt(amountStr);
+    if (!targetUser || isNaN(amount)) {
+      bot.say(channel, 'Usage: !ajoutercredits <utilisateur> <montant>');
+      return;
+    }
+    if (!userCredits[targetUser]) userCredits[targetUser] = 0;
+    userCredits[targetUser] += amount;
+    saveCredits();
+    bot.say(channel, `${targetUser} a reçu ${amount} gaufrettes.`);
+    return;
+  }
+
   if (["gaufromatic", "le bot", "lebot", "gaufrobot", "gaugromatic"].some(trigger => lowerMessage.startsWith(trigger))) {
     const prompt = `Tu es Gaufromatic. Réagis à : "${message}"`;
     const response = await openaiOps.make_openai_call(prompt);
@@ -143,7 +204,6 @@ bot.onMessage(async (channel, user, message, self) => {
   if (trackedUsers.includes(user.username.toLowerCase())) {
     if (currentTime - (lastUserReactionTime[user.username] || 0) < USER_REACTION_COOLDOWN) return;
     lastUserReactionTime[user.username] = currentTime;
-
     const prompt = `Tu es Gaufromatic. Réagis au message de ${user.username} : "${message}"`;
     const response = await openaiOps.make_openai_call(prompt);
     bot.say(channel, addRandomEmoteToEnd(formatEmotes(response)));
@@ -165,7 +225,6 @@ async function main() {
 
 main();
 
-// Démarre le serveur Express
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Serveur express lancé sur le port ${PORT}`);
