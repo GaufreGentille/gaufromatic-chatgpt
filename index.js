@@ -1,14 +1,19 @@
+// index.js
 import express from 'express';
 import fs from 'fs';
 import ws from 'ws';
 import expressWs from 'express-ws';
 import cors from 'cors';
+import dotenv from 'dotenv';
 import { job } from './keep_alive.js';
 import { OpenAIOperations } from './openai_operations.js';
 import { TwitchBot } from './twitch_bot.js';
 import { sanitizeGPTResponse } from './response_sanitizer.js';
 import { formatEmotes, addRandomEmoteToEnd } from './emote_formatter.js';
 import https from 'https';
+
+// Charge les variables d'environnement depuis le fichier .env
+dotenv.config();
 
 job.start();
 
@@ -103,30 +108,6 @@ setInterval(async () => {
         console.error('Erreur dans le timer de fact auto :', err);
     }
 }, 60 * 1000);
-
-const trackedUsers = ['garryaulait', 'pandibullee', 'gaufregentille'];
-const CREDITS_FILE = './user_credits.json';
-let userCredits = {};
-try {
-    if (fs.existsSync(CREDITS_FILE)) {
-        userCredits = JSON.parse(fs.readFileSync(CREDITS_FILE));
-    }
-} catch (err) {
-    console.error('Erreur lecture du fichier de crédits :', err);
-}
-
-function saveCredits() {
-    fs.writeFileSync(CREDITS_FILE, JSON.stringify(userCredits, null, 2));
-}
-
-const slotCooldown = {};
-
-bot.onMessage(async (channel, user, message, self) => {
-    if (self) return;
-
-    const currentTime = Date.now();
-    const elapsedTime = (currentTime - lastResponseTime) / 1000;
-    const lowerMessage = message.toLowerCase();
 
     // Commande !conseil
     if (lowerMessage.startsWith('!conseil')) {
