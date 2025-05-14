@@ -1,5 +1,3 @@
-// index.js
-
 // --- Importation des modules nécessaires ---
 import express from 'express';
 import fs from 'fs';
@@ -20,7 +18,6 @@ import {
   setCredits,
   getTopCredits
 } from './user_credits.js';
-
 
 // --- Lancement du keep-alive ---
 job.start();
@@ -47,30 +44,16 @@ const COOLDOWN_DURATION = 10;
 const TWITCH_CLIENT_ID = process.env.TWITCH_CLIENT_ID;
 const TWITCH_CLIENT_SECRET = process.env.TWITCH_CLIENT_SECRET;
 
-// --- Variables liées aux fonctionnalités du bot ---
-const FACT_COOLDOWN_DURATION = 45 * 60 * 1000; // 45 minutes pour les facts auto
+const FACT_COOLDOWN_DURATION = 45 * 60 * 1000;
 let lastFactTime = 0;
-const USER_REACTION_COOLDOWN = 120 * 1000; // 2 minutes pour réponses pseudo
+const USER_REACTION_COOLDOWN = 120 * 1000;
 const lastUserReactionTime = {};
-const slotCooldown = {}; // cooldown pour !slot
+const slotCooldown = {};
 const trackedUsers = ['garryaulait', 'pandibullee', 'gaufregentille'];
-const CREDITS_FILE = './user_credits.json';
-let userCredits = {}; // stocke les gaufrettes
 let accessToken = '';
 
 // --- Chargement des crédits sauvegardés ---
-try {
-  if (fs.existsSync(CREDITS_FILE)) {
-    userCredits = JSON.parse(fs.readFileSync(CREDITS_FILE));
-  }
-} catch (err) {
-  console.error('Erreur lecture du fichier de crédits :', err);
-}
-
-// --- Sauvegarde des crédits dans le fichier JSON ---
-function saveCredits() {
-  fs.writeFileSync(CREDITS_FILE, JSON.stringify(userCredits, null, 2));
-}
+loadCredits();
 
 // --- Récupère un token d'accès à l'API Twitch ---
 async function fetchTwitchAccessToken() {
@@ -150,79 +133,11 @@ bot.onMessage(async (channel, user, message, self) => {
   const elapsedTime = (currentTime - lastResponseTime) / 1000;
   const lowerMessage = message.toLowerCase();
 
-  // !fact forcé par commande
   if (lowerMessage.startsWith('!fact')) {
     fetchAndSendRandomFact(channel, true);
     return;
   }
 
-  // !conseil aléatoire via GPT
-  if (lowerMessage.startsWith('!conseil')) {
-    const gptPrompt = `Donne un conseil inutile, absurde mais bienveillant, comme si tu étais Gaufromatic.`;
-    const response = await openaiOps.make_openai_call(gptPrompt);
-    bot.say(channel, addRandomEmoteToEnd(formatEmotes(response)));
-    return;
-  }
-
-  // !slot (machine à sous avec gaufrettes)
-  if (lowerMessage.startsWith('!slot')) {
-    const now = Date.now();
-    const cooldownTime = 15 * 60 * 1000;
-    if (slotCooldown[user.username] && now - slotCooldown[user.username] < cooldownTime) {
-      const timeLeft = ((cooldownTime - (now - slotCooldown[user.username])) / 1000).toFixed(1);
-      bot.say(channel, `${user.username}, attends encore ${timeLeft} secondes avant de rejouer.`);
-      return;
-    }
-    slotCooldown[user.username] = now;
-    const symbols = ['🌭', '🧇', '💀', '☕', '🙀', '🔥', '🐶', '💲', '💩'];
-    const [slot1, slot2, slot3] = [0, 1, 2].map(() => symbols[Math.floor(Math.random() * symbols.length)]);
-    const result = `${slot1} | ${slot2} | ${slot3}`;
-    let creditsChange = 0;
-    if (slot1 === slot2 && slot2 === slot3) creditsChange = 50;
-    else if (slot1 === slot2 || slot2 === slot3 || slot1 === slot3) creditsChange = 10;
-    else creditsChange = -10;
-    if (!userCredits[user.username]) userCredits[user.username] = 100;
-    userCredits[user.username] += creditsChange;
-    saveCredits();
-    const prompt = `Tu es Gaufromatic. Résultat : ${result}. Type: ${creditsChange > 0 ? 'gain' : 'perte'}. Crédits changés : ${creditsChange}`;
-    const gptReaction = await openaiOps.make_openai_call(prompt);
-    const finalMessage = `🎰 ${result} → ${formatEmotes(gptReaction)}\n${user.username}, tu as maintenant ${userCredits[user.username]} gaufrettes.`;
-    bot.say(channel, addRandomEmoteToEnd(finalMessage));
-    return;
-  }
-
-  // !gaufrettes / !crédits → Affiche le solde du joueur
-  if (lowerMessage.startsWith('!gaufrettes') || lowerMessage.startsWith('!crédits')) {
-    if (!userCredits[user.username]) userCredits[user.username] = 100;
-    bot.say(channel, `${user.username}, tu as ${userCredits[user.username]} gaufrettes.`);
-    return;
-  }
-
-  // !classement → top 5 des joueurs
-  if (lowerMessage.startsWith('!classement')) {
-    const sorted = Object.entries(userCredits).sort(([, a], [, b]) => b - a).slice(0, 5);
-    let msg = '🏆 Top Gaufrettes :\n';
-    sorted.forEach(([u, c], i) => { msg += `#${i + 1} ${u} : ${c} gaufrettes\n`; });
-    bot.say(channel, msg);
-    return;
-  }
-
-  // !ajoutercredits (réservé au streamer)
-  if (lowerMessage.startsWith('!ajoutercredits') && user.username.toLowerCase() === 'gaufregentille') {
-    const [, targetUser, amountStr] = lowerMessage.split(' ');
-    const amount = parseInt(amountStr);
-    if (!targetUser || isNaN(amount)) {
-      bot.say(channel, 'Usage: !ajoutercredits <utilisateur> <montant>');
-      return;
-    }
-    if (!userCredits[targetUser]) userCredits[targetUser] = 0;
-    userCredits[targetUser] += amount;
-    saveCredits();
-    bot.say(channel, `${targetUser} a reçu ${amount} gaufrettes.`);
-    return;
-  }
-
-  // Déclencheurs avec le nom du bot
   if (["gaufromatic", "le bot", "lebot", "gaufrobot", "gaugromatic"].some(trigger => lowerMessage.startsWith(trigger))) {
     const prompt = `Tu es Gaufromatic. Réagis à ce message : ${message}`;
     const response = await openaiOps.make_openai_call(prompt);
@@ -230,7 +145,6 @@ bot.onMessage(async (channel, user, message, self) => {
     return;
   }
 
-  // Réaction automatique à certains pseudos
   if (trackedUsers.includes(user.username.toLowerCase())) {
     if (currentTime - (lastUserReactionTime[user.username] || 0) < USER_REACTION_COOLDOWN) return;
     lastUserReactionTime[user.username] = currentTime;
