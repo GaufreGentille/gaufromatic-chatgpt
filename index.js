@@ -40,7 +40,7 @@ const TWITCH_CLIENT_ID = process.env.TWITCH_CLIENT_ID;
 const TWITCH_CLIENT_SECRET = process.env.TWITCH_CLIENT_SECRET;
 
 // --- Variables liées aux fonctionnalités du bot ---
-const FACT_COOLDOWN_DURATION = 20 * 60 * 1000; // 20 minutes pour les facts auto
+const FACT_COOLDOWN_DURATION = 45 * 60 * 1000; // 45 minutes pour les facts auto
 let lastFactTime = 0;
 const USER_REACTION_COOLDOWN = 120 * 1000; // 2 minutes pour réponses pseudo
 const lastUserReactionTime = {};
