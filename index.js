@@ -102,7 +102,7 @@ async function fetchAndSendRandomFact(channel, force = false) {
         const parsed = JSON.parse(data);
         const prompt = `Traduis ce fait inutile en français sans rien ajouter : ${parsed.text}`;
         const translated = await openaiOps.make_openai_call(prompt);
-        bot.say(channel, `🤯 Fait inutile : ${translated}`);
+        bot.say(channel, `🦫 Useless fact : ${translated}`);
       } catch (err) {
         console.error('Erreur fetch fact :', err);
       }
