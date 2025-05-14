@@ -13,6 +13,14 @@ import { sanitizeGPTResponse } from './response_sanitizer.js';
 import { formatEmotes, addRandomEmoteToEnd } from './emote_formatter.js';
 import https from 'https';
 import fetch from 'node-fetch';
+import {
+  loadCredits,
+  getCredits,
+  changeCredits,
+  setCredits,
+  getTopCredits
+} from './user_credits.js';
+
 
 // --- Lancement du keep-alive ---
 job.start();
