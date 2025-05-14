@@ -19,16 +19,13 @@ import {
   getTopCredits
 } from './user_credits.js';
 
-// --- Lancement du keep-alive ---
 job.start();
 
-// --- Configuration de l'application Express ---
 const app = express();
 const expressWsInstance = expressWs(app);
 app.set('view engine', 'ejs');
 app.use(cors());
 
-// --- Constantes et configurations du bot ---
 const GPT_MODE = 'CHAT';
 const HISTORY_LENGTH = 5;
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
@@ -52,19 +49,14 @@ const slotCooldown = {};
 const trackedUsers = ['garryaulait', 'pandibullee', 'gaufregentille'];
 let accessToken = '';
 
-// --- Chargement des crédits sauvegardés ---
 loadCredits();
 
-// --- Récupère un token d'accès à l'API Twitch ---
 async function fetchTwitchAccessToken() {
-  const res = await fetch(`https://id.twitch.tv/oauth2/token?client_id=${TWITCH_CLIENT_ID}&client_secret=${TWITCH_CLIENT_SECRET}&grant_type=client_credentials`, {
-    method: 'POST'
-  });
+  const res = await fetch(`https://id.twitch.tv/oauth2/token?client_id=${TWITCH_CLIENT_ID}&client_secret=${TWITCH_CLIENT_SECRET}&grant_type=client_credentials`, { method: 'POST' });
   const data = await res.json();
   accessToken = data.access_token;
 }
 
-// --- Vérifie si le stream est en ligne ---
 async function isStreamLive(username) {
   if (!accessToken) await fetchTwitchAccessToken();
   const res = await fetch(`https://api.twitch.tv/helix/streams?user_login=${username}`, {
@@ -77,7 +69,6 @@ async function isStreamLive(username) {
   return data.data && data.data.length > 0;
 }
 
-// --- Récupère un fait inutile aléatoire ---
 async function fetchAndSendRandomFact(channel, force = false) {
   const now = Date.now();
   if (!force && now - lastFactTime < FACT_COOLDOWN_DURATION) return;
@@ -101,7 +92,6 @@ async function fetchAndSendRandomFact(channel, force = false) {
   });
 }
 
-// --- Chargement du contexte système ---
 const commandNames = COMMAND_NAME.split(',').map(cmd => cmd.trim().toLowerCase());
 const channels = CHANNELS.split(',').map(channel => channel.trim());
 const maxLength = 399;
@@ -114,11 +104,9 @@ try {
   console.warn('file_context.txt not found, using empty context.');
 }
 
-// --- Initialisation du bot Twitch et OpenAI ---
 const bot = new TwitchBot(TWITCH_USER, TWITCH_AUTH, channels, OPENAI_API_KEY, ENABLE_TTS);
 const openaiOps = new OpenAIOperations(fileContext, OPENAI_API_KEY, MODEL_NAME, HISTORY_LENGTH);
 
-// --- Gestion des événements du bot ---
 bot.onConnected((addr, port) => {
   console.log(`* Connected to ${addr}:${port}`);
   channels.forEach(channel => console.log(`* Joining ${channel}`));
@@ -126,7 +114,6 @@ bot.onConnected((addr, port) => {
 
 bot.onDisconnected(reason => console.log(`Disconnected: ${reason}`));
 
-// --- Réponses aux messages du chat Twitch ---
 bot.onMessage(async (channel, user, message, self) => {
   if (self) return;
   const currentTime = Date.now();
@@ -135,6 +122,66 @@ bot.onMessage(async (channel, user, message, self) => {
 
   if (lowerMessage.startsWith('!fact')) {
     fetchAndSendRandomFact(channel, true);
+    return;
+  }
+
+  if (lowerMessage.startsWith('!conseil')) {
+    const gptPrompt = `Donne un conseil inutile, absurde mais bienveillant, comme si tu étais Gaufromatic.`;
+    const response = await openaiOps.make_openai_call(gptPrompt);
+    bot.say(channel, addRandomEmoteToEnd(formatEmotes(response)));
+    return;
+  }
+
+  if (lowerMessage.startsWith('!slot')) {
+    if (slotCooldown[user.username] && currentTime - slotCooldown[user.username] < 15 * 60 * 1000) {
+      const timeLeft = ((15 * 60 * 1000 - (currentTime - slotCooldown[user.username])) / 1000).toFixed(1);
+      bot.say(channel, `${user.username}, attends encore ${timeLeft}s pour rejouer.`);
+      return;
+    }
+    slotCooldown[user.username] = currentTime;
+
+    const symbols = ['🌭', '🧇', '💀', '☕', '🙀', '🔥', '🐶', '💲', '💩'];
+    const [slot1, slot2, slot3] = [0, 1, 2].map(() => symbols[Math.floor(Math.random() * symbols.length)]);
+    const result = `${slot1} | ${slot2} | ${slot3}`;
+    let creditsChange = 0;
+
+    if (slot1 === slot2 && slot2 === slot3) creditsChange = 50;
+    else if (slot1 === slot2 || slot2 === slot3 || slot1 === slot3) creditsChange = 10;
+    else creditsChange = -10;
+
+    const newTotal = changeCredits(user.username, creditsChange);
+    const prompt = `Tu es Gaufromatic. Résultat : ${result}. Type: ${creditsChange > 0 ? 'gain' : 'perte'}. Crédits changés : ${creditsChange}`;
+    const gptReaction = await openaiOps.make_openai_call(prompt);
+    bot.say(channel, addRandomEmoteToEnd(`🎰 ${result} → ${formatEmotes(gptReaction)}
+${user.username}, tu as maintenant ${newTotal} gaufrettes.`));
+    return;
+  }
+
+  if (lowerMessage.startsWith('!gaufrettes') || lowerMessage.startsWith('!crédits')) {
+    const credits = getCredits(user.username);
+    bot.say(channel, `${user.username}, tu as ${credits} gaufrettes.`);
+    return;
+  }
+
+  if (lowerMessage.startsWith('!ajoutercredits') && user.username.toLowerCase() === 'gaufregentille') {
+    const [, targetUser, amountStr] = lowerMessage.split(' ');
+    const amount = parseInt(amountStr);
+    if (!targetUser || isNaN(amount)) {
+      bot.say(channel, 'Usage: !ajoutercredits <utilisateur> <montant>');
+      return;
+    }
+    changeCredits(targetUser, amount);
+    bot.say(channel, `${targetUser} a reçu ${amount} gaufrettes.`);
+    return;
+  }
+
+  if (lowerMessage.startsWith('!classement')) {
+    const top = getTopCredits();
+    let msg = '🏆 Top Gaufrettes :\n';
+    top.forEach(([user, credits], i) => {
+      msg += `#${i + 1} ${user} : ${credits} gaufrettes\n`;
+    });
+    bot.say(channel, msg);
     return;
   }
 
@@ -155,7 +202,6 @@ bot.onMessage(async (channel, user, message, self) => {
   }
 });
 
-// --- Lancement principal ---
 async function main() {
   try {
     await bot.connect();
@@ -169,7 +215,6 @@ async function main() {
 
 main();
 
-// --- Serveur web Express pour compatibilité Render ---
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Serveur express lancé sur le port ${PORT}`);
