@@ -43,7 +43,7 @@ const TWITCH_CLIENT_SECRET = process.env.TWITCH_CLIENT_SECRET;
 
 const FACT_COOLDOWN_DURATION = 45 * 60 * 1000;
 let lastFactTime = 0;
-const USER_REACTION_COOLDOWN = 120 * 1000;
+const USER_REACTION_COOLDOWN = 15 * 120 * 1000;
 const lastUserReactionTime = {};
 const slotCooldown = {};
 const trackedUsers = ['garryaulait', 'pandibullee', 'gaufregentille'];
