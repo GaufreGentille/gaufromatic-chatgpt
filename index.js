@@ -46,7 +46,7 @@ let lastFactTime = 0;
 const USER_REACTION_COOLDOWN = 15 * 120 * 1000;
 const lastUserReactionTime = {};
 const slotCooldown = {};
-const trackedUsers = ['garryaulait', 'pandibullee', 'gaufregentille'];
+const trackedUsers = ['garryaulait', 'pandibullee', 'alpchemiste'];
 let accessToken = '';
 
 loadCredits();
