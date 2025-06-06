@@ -133,8 +133,8 @@ bot.onMessage(async (channel, user, message, self) => {
   }
 
   if (lowerMessage.startsWith('!slot')) {
-    if (slotCooldown[user.username] && currentTime - slotCooldown[user.username] < 15 * 60 * 1000) {
-      const timeLeft = ((15 * 60 * 1000 - (currentTime - slotCooldown[user.username])) / 1000).toFixed(1);
+    if (slotCooldown[user.username] && currentTime - slotCooldown[user.username] < 2 * 60 * 1000) {
+      const timeLeft = ((2 * 60 * 1000 - (currentTime - slotCooldown[user.username])) / 1000).toFixed(1);
       bot.say(channel, `${user.username}, attends encore ${timeLeft}s pour rejouer.`);
       return;
     }
